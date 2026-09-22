@@ -1,0 +1,17 @@
+{
+    "name": "vsmartok/phpframework",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "PHPFramework\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Sergii Skorobagatko"
+        }
+    ],
+    "require": {
+        "php": "^8.3"
+    }
+}
