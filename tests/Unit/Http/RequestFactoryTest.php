@@ -69,6 +69,10 @@ final class RequestFactoryTest extends TestCase
             'null value' => [
                 ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => null], 
             ],
+            'query params & anchor' => [
+                ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/blog?page=1#benefits'], 
+            ],
+            
         ];
     }
 
