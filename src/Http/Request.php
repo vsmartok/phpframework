@@ -16,7 +16,7 @@ final readonly class Request
         string $method,
         string $path,
     ) {
-        if ($method === '' || !preg_match('/^[A-Za-z]+$/', $method)) {
+        if ($method === '' || !preg_match('/^[A-Za-z]+$/D', $method)) {
             throw new InvalidArgumentException(
                 sprintf('HTTP method must be a non-empty string containing only letters, "%s" given.', $method),
             );
