@@ -42,7 +42,7 @@ final class HttpKernelTest extends TestCase
         $response = $httpKernel->handle($request);
 
         self::assertSame($expectedResponse, $response);
-        self::assertSame('home page - POST', $response->getBody());
+        self::assertSame('{"message":"home page - POST"}', $response->getBody());
         self::assertSame(['content-type' => 'application/json'], $response->getHeaders());
     }
 
