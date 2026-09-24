@@ -12,9 +12,18 @@ final readonly class Request
 
     private string $path;
 
+    /**
+     * @var array<array-key,mixed>
+     */
+    private array $queryParams;
+
+    /**
+     * @param array<array-key,mixed> $queryParams
+     */
     public function __construct(
         string $method,
         string $path,
+        array $queryParams = [],
     ) {
         if ($method === '' || !preg_match('/^[A-Za-z]+$/D', $method)) {
             throw new InvalidArgumentException(
@@ -30,6 +39,7 @@ final readonly class Request
 
         $this->method = strtoupper($method);
         $this->path = $path;
+        $this->queryParams = $queryParams;
     }
 
     public function getMethod(): string
@@ -40,5 +50,18 @@ final readonly class Request
     public function getPath(): string
     {
         return $this->path;
+    }
+
+    /**
+     * @return array<array-key,mixed>
+     */
+    public function getQueryParams(): array
+    {
+        return $this->queryParams;
+    }
+
+    public function getQueryParam(string $name, mixed $default = null): mixed
+    {
+        return array_key_exists($name, $this->queryParams) ? $this->queryParams[$name] : $default;
     }
 }
