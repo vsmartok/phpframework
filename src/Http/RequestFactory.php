@@ -8,7 +8,10 @@ use InvalidArgumentException;
 
 final class RequestFactory
 {
-    public function fromServer(array $server): Request
+    /**
+     * @param array<array-key,mixed> $queryParams
+     */
+    public function fromServer(array $server, array $queryParams = []): Request
     {
         $method = $server['REQUEST_METHOD'] ?? null;
         if (!is_string($method) || $method === '') {
@@ -26,6 +29,6 @@ final class RequestFactory
 
         $path = explode('?', $uri, 2)[0];
 
-        return new Request($method, $path);
+        return new Request($method, $path, $queryParams);
     }
 }

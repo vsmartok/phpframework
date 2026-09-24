@@ -155,4 +155,23 @@ final class RequestFactoryTest extends TestCase
         self::assertSame('PUT', $request->getMethod());
         self::assertSame('/home', $request->getPath());
     }
+
+    public function testFromServerMethodCreatesRequestObjectWithThePassedRequestParameters(): void
+    {
+        $request = (new RequestFactory())->fromServer(
+            ['REQUEST_URI' => '/articles?page=1', 'REQUEST_METHOD' => 'GET'],
+            ['page' => '2', 'order_by' => 'price'],
+        );
+        
+        self::assertSame(['page' => '2', 'order_by' => 'price'], $request->getQueryParams());
+    }
+
+    public function testFromServerMethodCreatesRequestObjectWithAnEmptyArrayOfQueryParametersIfNoDataIsPassed(): void
+    {
+        $request = (new RequestFactory())->fromServer(
+            ['REQUEST_URI' => '/articles?page=1', 'REQUEST_METHOD' => 'GET'],
+        );
+        
+        self::assertSame([], $request->getQueryParams());
+    }
 }
