@@ -19,7 +19,7 @@ final class HttpKernel
         try {
             $response = $this->router->dispatch($request);
         } catch (RouteNotFoundException) {
-            $response = new Response('Page not found', 404);
+            $response = new Response('Page not found', 404, ['Content-Type' => 'text/plain; charset=UTF-8']);
         }
 
         return $response;
