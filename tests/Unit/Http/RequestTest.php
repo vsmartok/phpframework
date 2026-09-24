@@ -99,4 +99,45 @@ final class RequestTest extends TestCase
         $request = new Request('GET', '/home');
         self::assertSame('/home', $request->getPath());
     }
+
+    public function testItSetsAnEmptyArrayForDefaultQueryParameters(): void
+    {
+        $request = new Request('GET', '/');
+        self::assertSame([], $request->getQueryParams());
+    }
+
+    public function testItAcceptsAnArrayOfQueryParameters(): void
+    {
+        $request = new Request('GET', '/', ['page' => '2', 'sort_order' => 'DESC']);
+        self::assertSame(['page' => '2', 'sort_order' => 'DESC'], $request->getQueryParams());
+    }
+
+    public function testGetQueryParamReturnsDefaultValueOfNullIfTheParameterIsMissing(): void
+    {
+        $request = new Request('GET', '/home');
+        self::assertNull($request->getQueryParam('page'));
+    }
+
+    public function testGetQueryParamReturnsTheSpecifiedDefaultValueIfTheParameterIsMissing(): void
+    {
+        $request = new Request('GET', '/home');
+        self::assertSame('1', $request->getQueryParam('page', '1'));
+    }
+
+    #[DataProvider('valuesForGetQueryParamMethod')]
+    public function testGetQueryParamReturnsValueFromTheRequestParametersArray(mixed $actualValue, mixed $defaultValue): void
+    {
+        $request = new Request('GET', '/', ['page' => $actualValue]);
+        self::assertSame($actualValue, $request->getQueryParam('page', $defaultValue));
+    }
+
+    public static function valuesForGetQueryParamMethod(): array
+    {
+        return [
+            'param value = 2' => ['2', '1'],
+            'param value = null' => [null, '1'],
+            'param value =' => ['', 'all'],
+            'param value = (array)' => [['one' => '2', 'two' => '3'], 'empty'],
+        ];
+    }
 }
