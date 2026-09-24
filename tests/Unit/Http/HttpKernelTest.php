@@ -7,6 +7,7 @@ namespace Tests\Unit\Http;
 use PHPFramework\Http\HttpKernel;
 use PHPFramework\Http\Request;
 use PHPFramework\Http\Response;
+use PHPFramework\Routing\MethodNotAllowedException;
 use PHPFramework\Routing\Router;
 use PHPFramework\Routing\RouteNotFoundException;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -22,6 +23,7 @@ use TypeError;
 #[UsesClass(Request::class)]
 #[UsesClass(Response::class)]
 #[UsesClass(RouteNotFoundException::class)]
+#[UsesClass(MethodNotAllowedException::class)]
 final class HttpKernelTest extends TestCase
 {
     public function testHandleMethodReturnsTheHandlersResponseIfRouteForTheRequestIsRegistered(): void
@@ -46,20 +48,6 @@ final class HttpKernelTest extends TestCase
         self::assertSame(['content-type' => 'application/json'], $response->getHeaders());
     }
 
-    public function testHandleMethodReturnsPageNotFoundResponseIfTheRouteForTheRequestIsNotRegistered(): void
-    {
-        $router = new Router();
-        $router->add('GET', '/home', fn(Request $request): Response => new Response('home page - GET'));
-        $router->add('GET', '/contact', fn(Request $request): Response => new Response('contact page - GET'));
-
-        $httpKernel = new HttpKernel($router);
-        $response = $httpKernel->handle(new Request('POST', '/home'));
-
-        self::assertSame('Page not found', $response->getBody());
-        self::assertSame(404, $response->getStatusCode());
-        self::assertSame(['content-type' => 'text/plain; charset=UTF-8'], $response->getHeaders());
-    }
-
     public function testHandleMethodProcessesSuccessiveRequestsIndependently(): void
     {
         $router = new Router();
@@ -80,7 +68,7 @@ final class HttpKernelTest extends TestCase
     }
 
     #[DataProvider('exceptionsThatTheHandleMethodDoesNotHandle')]
-    public function testHandleMethodLetsExceptionsAndErrorsOtherThanRouteNotFoundExceptionPropagateOutwards(string $exceptionClass): void
+    public function testPropagatesUnexpectedExceptionsAndErrors(string $exceptionClass): void
     {
         $exception = new $exceptionClass();
 
@@ -106,5 +94,41 @@ final class HttpKernelTest extends TestCase
             'RuntimeException' => [RuntimeException::class],
             'TypeError' => [TypeError::class],
         ];
+    }
+
+    public function testReturns405WhenPathExistsButMethodIsNotAllowed(): void
+    {
+        $router = new Router();
+        $router->add('GET', '/home', fn(Request $request): Response => new Response());
+        $router->add('POST', '/home', fn(Request $request): Response => new Response());
+        $router->add('DELETE', '/home', fn(Request $request): Response => new Response());
+        $router->add('PUT', '/home', fn(Request $request): Response => new Response());
+
+        $httpKernel = new HttpKernel($router);
+        $response = $httpKernel->handle(new Request('PATCH', '/home'));
+
+        self::assertSame(405, $response->getStatusCode());
+        self::assertSame('Method not allowed', $response->getBody());
+        self::assertSame(
+            [
+                'allow' => 'GET, POST, DELETE, PUT',
+                'content-type' => 'text/plain; charset=UTF-8',
+            ], 
+            $response->getHeaders(),
+        );
+    }
+
+    public function testReturns404WhenPathIsNotRegistered(): void
+    {
+        $router = new Router();
+        $router->add('GET', '/home', fn(Request $request): Response => new Response());
+        $router->add('GET', '/contact', fn(Request $request): Response => new Response());
+
+        $httpKernel = new HttpKernel($router);
+        $response = $httpKernel->handle(new Request('GET', '/unknown'));
+
+        self::assertSame('Page not found', $response->getBody());
+        self::assertSame(404, $response->getStatusCode());
+        self::assertSame(['content-type' => 'text/plain; charset=UTF-8'], $response->getHeaders());
     }
 }

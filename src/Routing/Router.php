@@ -38,10 +38,15 @@ final class Router
         $method = $request->getMethod();
         $path = $request->getPath();
 
-        if (!isset($this->routes[$path][$method])) {
+        if (!isset($this->routes[$path])) {
             throw new RouteNotFoundException(
                 sprintf('Route not found: [%s] "%s".', $method, $path),
             );
+        }
+
+        if (!isset($this->routes[$path][$method])) {
+            $allowedMethods = array_keys($this->routes[$path]); 
+            throw new MethodNotAllowedException($allowedMethods);
         }
 
         $handler = $this->routes[$path][$method];

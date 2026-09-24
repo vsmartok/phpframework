@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use LogicException;
 use PHPFramework\Http\Request;
 use PHPFramework\Http\Response;
+use PHPFramework\Routing\MethodNotAllowedException;
 use PHPFramework\Routing\RouteNotFoundException;
 use PHPFramework\Routing\Router;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -22,6 +23,7 @@ use TypeError;
 #[UsesClass(Request::class)]
 #[UsesClass(Response::class)]
 #[UsesClass(RouteNotFoundException::class)]
+#[UsesClass(MethodNotAllowedException::class)]
 final class RouterTest extends TestCase
 {
     #[DataProvider('allowedMethodNamesToNormalize')]
@@ -193,13 +195,33 @@ final class RouterTest extends TestCase
         ];
     }
 
-    public function testDispatchMethodThrowRouteNotFoundExceptionIfThePathIsRegisteredButTheMethodForTheRequestIsNot(): void
+    public function testDispatchMethodThrowMethodNotAllowedExceptionIfThePathIsRegisteredButTheMethodForTheRequestIsNot(): void
     {
         $router = new Router();
         $router->add('GET', '/articles', fn(Request $request): Response => new Response());
 
-        $this->expectException(RouteNotFoundException::class);
+        $this->expectException(MethodNotAllowedException::class);
+
         $router->dispatch(new Request('POST', '/articles'));
+    }
+
+    public function testDispatchMethodPassesAnArrayOfRegisteredMethodNamesForTheGivenPathToTheExceptionObjectWhenThrowingMethodNotAllowedException(): void
+    {
+        $router = new Router();
+        $router->add('GET', '/articles', fn(Request $request): Response => new Response());
+        $router->add('POST', '/articles', fn(Request $request): Response => new Response());
+        $router->add('DELETE', '/articles', fn(Request $request): Response => new Response());
+        $router->add('OPTIONS', '/contacts', fn(Request $request): Response => new Response());
+        $router->add('PATCH', '/articles', fn(Request $request): Response => new Response());
+
+        try {
+            $router->dispatch(new Request('PUT', '/articles'));
+        } catch (MethodNotAllowedException $e) {
+            self::assertSame(['GET', 'POST', 'DELETE', 'PATCH'], $e->getAllowedMethods());
+            return;
+        }
+
+        self::fail('If the route for the request method is missing, a MethodNotAllowedException should be thrown');
     }
 
     public function testAddRejectsDuplicateRouteAndPreservesOriginalHandler(): void
