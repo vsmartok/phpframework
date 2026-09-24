@@ -27,7 +27,7 @@ final class HttpKernelTest extends TestCase
     public function testHandleMethodReturnsTheHandlersResponseIfRouteForTheRequestIsRegistered(): void
     {
         $request = new Request('POST', '/home');
-        $expectedResponse = new Response('home page - POST');
+        $expectedResponse = new Response('{"message":"home page - POST"}', 200, ['Content-Type' => 'application/json']);
 
         $router = new Router();
         $router->add('GET', '/home', fn(Request $request): Response => new Response('home page - GET'));
@@ -43,6 +43,7 @@ final class HttpKernelTest extends TestCase
 
         self::assertSame($expectedResponse, $response);
         self::assertSame('home page - POST', $response->getBody());
+        self::assertSame(['content-type' => 'application/json'], $response->getHeaders());
     }
 
     public function testHandleMethodReturnsPageNotFoundResponseIfTheRouteForTheRequestIsNotRegistered(): void
@@ -56,6 +57,7 @@ final class HttpKernelTest extends TestCase
 
         self::assertSame('Page not found', $response->getBody());
         self::assertSame(404, $response->getStatusCode());
+        self::assertSame(['content-type' => 'text/plain; charset=UTF-8'], $response->getHeaders());
     }
 
     public function testHandleMethodProcessesSuccessiveRequestsIndependently(): void
