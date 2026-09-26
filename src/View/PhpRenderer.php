@@ -7,7 +7,7 @@ namespace PHPFramework\View;
 use InvalidArgumentException;
 use Throwable;
 
-final class PhpRenderer
+final class PhpRenderer implements RendererInterface
 {
     /**
      * @param array<string,mixed> $data
