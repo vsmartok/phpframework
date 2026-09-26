@@ -70,4 +70,13 @@ final readonly class Response
     {
         return $this->headers;
     }
+
+    public function withHeader(string $name, string $value): self
+    {
+        $headers = $this->headers;
+        $headers[strtolower($name)] = $value;
+
+        return new self($this->body, $this->statusCode, $headers);
+    }
+
 }

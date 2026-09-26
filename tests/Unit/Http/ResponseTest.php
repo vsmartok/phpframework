@@ -234,4 +234,71 @@ final class ResponseTest extends TestCase
             'value has type "object"' => ['content-type', new stdClass()],
         ];
     }
+
+    #[DataProvider('newResponseHeaderValues')]
+    public function testWithHeaderMethodAlwaysReturnsNewResponseInstance(array $initialHeaders, array $header, array $expectedHeaders): void
+    {
+        $response = new Response('test body', 201, $initialHeaders);
+
+        $oldHeaders = $response->getHeaders();
+
+        $newResponse = $response->withHeader($header[0], $header[1]);
+
+        self::assertNotSame($newResponse, $response);
+
+        self::assertSame($response->getHeaders(), $oldHeaders);
+        self::assertSame($newResponse->getStatusCode(), $response->getStatusCode());
+        self::assertSame($expectedHeaders, $newResponse->getHeaders());
+        self::assertSame($newResponse->getBody(), $response->getBody());
+    }
+
+    public static function newResponseHeaderValues(): array
+    {
+        return [
+            'add new header' => [
+                ['Content-Type' => 'text/plain; charset=utf-8'],
+                ['Pragma', 'no-cache'],
+                ['content-type' => 'text/plain; charset=utf-8', 'pragma' => 'no-cache'],
+            ],
+            'add an existing header with the same value' => [
+                ['Content-Type' => 'text/plain; charset=utf-8'],
+                ['Content-Type', 'text/plain; charset=utf-8'],
+                ['content-type' => 'text/plain; charset=utf-8'],
+            ],
+            'add an existing header with the new value' => [
+                ['Content-Type' => 'text/plain; charset=utf-8'],
+                ['Content-Type', 'text/html; charset=utf-8'],
+                ['content-type' => 'text/html; charset=utf-8'],
+            ],
+        ];
+    }
+
+    #[DataProvider('invalidNewHeaderValues')]
+    public function testWithHeaderMethodTheOriginalResponseRemainsUnchangedIncludingInTheEventOfAnError(string $name, string $value): void
+    {
+        $response = new Response('test body', 201, ['Content-Type' => 'text/plain; charset=utf-8']);
+
+        try {
+            $response->withHeader($name, $value);
+        } catch (InvalidArgumentException $e) {
+            self::assertSame(201, $response->getStatusCode());
+            self::assertSame(['content-type' => 'text/plain; charset=utf-8'], $response->getHeaders());
+            self::assertSame('test body', $response->getBody());
+            return;
+        }
+
+        self::fail('Expected InvalidArgumentException to be thrown.');
+    }
+
+    public static function invalidNewHeaderValues(): array
+    {
+        return [
+            'invalid header name' => [
+                'Content Type!', 'text/plain; charset=utf-8',
+            ],
+            'invalid header value' => [
+                'Content-Type', "text/plain; charset=utf-8\n",
+            ],
+        ];
+    }
 }
