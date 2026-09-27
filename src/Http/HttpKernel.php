@@ -8,7 +8,7 @@ use PHPFramework\Routing\MethodNotAllowedException;
 use PHPFramework\Routing\RouteNotFoundException;
 use PHPFramework\Routing\Router;
 
-final class HttpKernel
+final class HttpKernel implements RequestHandlerInterface
 {
     public function __construct(
         private readonly Router $router,
