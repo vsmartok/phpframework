@@ -14,6 +14,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
 use TypeError;
@@ -23,7 +24,8 @@ use TypeError;
 #[UsesClass(Response::class)]
 class ErrorHandlerTest extends TestCase
 {
-    public function testHandleMethodPassesTheSameRequestToTheNextHandlerExactlyOnce(): void
+    #[DataProvider('responseToTestLoggerNever')]
+    public function testHandleMethodPassesTheSameRequestToTheNextHandlerExactlyOnce(Response $response, array $expectedData): void
     {
         $request = new Request('GET', '/');
 
@@ -31,10 +33,41 @@ class ErrorHandlerTest extends TestCase
         $nextMock->expects($this->once())
             ->method('handle')
             ->with($this->identicalTo($request))
-            ->willReturn(new Response());
+            ->willReturn($response);
 
-        $errorHandler = new ErrorHandler($nextMock);
-        $errorHandler->handle($request);
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger
+            ->expects($this->never())
+            ->method('error');
+
+        $errorHandler = new ErrorHandler($nextMock, $logger);
+        $response = $errorHandler->handle($request);
+
+        self::assertSame($expectedData[0], $response->getBody());
+        self::assertSame($expectedData[1], $response->getStatusCode());
+        self::assertSame($expectedData[2], $response->getHeaders());
+    }
+
+    public static function responseToTestLoggerNever(): array
+    {
+        return [
+            'response 201' => [
+                new Response('response 201', 201, ['Content-Type' => 'text/html; charset=utf-8']),
+                ['response 201', 201, ['content-type' => 'text/html; charset=utf-8']],
+            ],
+            'response 400' => [
+                new Response('response 400', 400, ['Content-Type' => 'text/plain; charset=utf-8']),
+                ['response 400', 400, ['content-type' => 'text/plain; charset=utf-8']],
+            ],
+            'response 404' => [
+                new Response('response 404', 404, ['Content-Type' => 'text/plain; charset=utf-8']),
+                ['response 404', 404, ['content-type' => 'text/plain; charset=utf-8']],
+            ],
+            'response 500' => [
+                new Response('response 500', 500, ['Content-Type' => 'text/plain; charset=utf-8']),
+                ['response 500', 500, ['content-type' => 'text/plain; charset=utf-8']],
+            ],
+        ];
     }
 
     public function testHandleMethodUponSuccessfulExecutionItReturnsTheSameResponseObjectWithoutModifyingIt(): void
@@ -56,14 +89,27 @@ class ErrorHandlerTest extends TestCase
     #[DataProvider('nextHandlerExceptions')]
     public function testHandleMethodReturnsAnInternalServerErrorResponseIfTheNextHandlerThrowsThrowable(Throwable $exception): void
     {
-        $nextMock = $this->createMock(RequestHandlerInterface::class);
-        $nextMock
+        $next = $this->createMock(RequestHandlerInterface::class);
+        $next
             ->expects($this->once())
             ->method('handle')
             ->willThrowException($exception);
 
-        $errorHandler = new ErrorHandler($nextMock);
-        $response = $errorHandler->handle(new Request('GET', '/'));
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger
+            ->expects($this->once())
+            ->method('error')
+            ->with(
+                $this->identicalTo('Unhandled exception during request handling.'),
+                $this->identicalTo([
+                    'exception' => $exception,
+                    'method' => 'POST',
+                    'path' => '/articles',
+                ]),
+            );
+
+        $errorHandler = new ErrorHandler($next, $logger);
+        $response = $errorHandler->handle(new Request('POST', '/articles'));
 
         self::assertSame(500, $response->getStatusCode());
         self::assertSame(['content-type' => 'text/plain; charset=UTF-8'], $response->getHeaders());
@@ -132,5 +178,34 @@ class ErrorHandlerTest extends TestCase
         self::assertSame(['content-type' => 'text/plain; charset=UTF-8'], $responseOne->getHeaders());
         self::assertSame('Internal server error', $responseOne->getBody());
         self::assertSame($responseTwo, $expectedResponse);
+    }
+
+    public function testHandleMethodPropagatesTheLoggerException(): void
+    {
+        $loggerException = new RuntimeException('An exception was thrown');
+        $request = new Request('GET', '/contact');
+
+        $nextMock = $this->createMock(RequestHandlerInterface::class);
+        $nextMock
+            ->expects($this->once())
+            ->method('handle')
+            ->willThrowException(new LogicException());
+
+        $loggerMock = $this->createMock(LoggerInterface::class);
+        $loggerMock
+            ->expects($this->once())
+            ->method('error')
+            ->willThrowException($loggerException);
+
+        $errorHandler = new ErrorHandler($nextMock, $loggerMock);
+
+        try {
+            $errorHandler->handle($request);
+        } catch (Throwable $exception) {
+            self::assertSame($exception, $loggerException);
+            return;
+        }
+
+        self::fail('The exception was not propagated outwards');
     }
 }
