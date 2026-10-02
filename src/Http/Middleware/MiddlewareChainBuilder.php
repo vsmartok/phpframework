@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace PHPFramework\Http;
+namespace PHPFramework\Http\Middleware;
+
+use PHPFramework\Http\RequestHandlerInterface;
 
 final class MiddlewareChainBuilder
 {

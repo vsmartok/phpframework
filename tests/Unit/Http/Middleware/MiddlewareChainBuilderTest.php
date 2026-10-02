@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Http;
+namespace Tests\Unit\Http\Middleware;
 
-use PHPFramework\Http\MiddlewareChainBuilder;
-use PHPFramework\Http\MiddlewareHandler;
-use PHPFramework\Http\MiddlewareInterface;
+use PHPFramework\Http\Middleware\MiddlewareChainBuilder;
+use PHPFramework\Http\Middleware\MiddlewareHandler;
+use PHPFramework\Http\Middleware\MiddlewareInterface;
 use PHPFramework\Http\RequestHandlerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;

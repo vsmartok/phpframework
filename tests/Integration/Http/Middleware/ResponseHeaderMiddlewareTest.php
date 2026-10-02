@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Tests\Integration\Http;
+namespace Tests\Integration\Http\Middleware;
 
-use PHPFramework\Http\MiddlewareHandler;
+use PHPFramework\Http\Middleware\MiddlewareHandler;
+use PHPFramework\Http\Middleware\ResponseHeaderMiddleware;
 use PHPFramework\Http\Request;
 use PHPFramework\Http\RequestHandlerInterface;
 use PHPFramework\Http\Response;
-use PHPFramework\Http\ResponseHeaderMiddleware;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;

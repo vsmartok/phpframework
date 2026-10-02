@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
-namespace PHPFramework\Http;
+namespace PHPFramework\Http\Middleware;
+
+use PHPFramework\Http\Request;
+use PHPFramework\Http\RequestHandlerInterface;
+use PHPFramework\Http\Response;
 
 final readonly class MiddlewareHandler implements RequestHandlerInterface
 {

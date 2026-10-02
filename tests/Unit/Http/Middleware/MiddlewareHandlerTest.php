@@ -1,9 +1,9 @@
 <?php
 
-namespace Tests\Unit\Http;
+namespace Tests\Unit\Http\Middleware;
 
-use PHPFramework\Http\MiddlewareHandler;
-use PHPFramework\Http\MiddlewareInterface;
+use PHPFramework\Http\Middleware\MiddlewareHandler;
+use PHPFramework\Http\Middleware\MiddlewareInterface;
 use PHPFramework\Http\Request;
 use PHPFramework\Http\RequestHandlerInterface;
 use PHPFramework\Http\Response;
