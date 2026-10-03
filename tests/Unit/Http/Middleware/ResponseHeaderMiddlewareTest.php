@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Http\Middleware;
 
+use InvalidArgumentException;
 use PHPFramework\Http\Middleware\ResponseHeaderMiddleware;
 use PHPFramework\Http\Request;
 use PHPFramework\Http\RequestHandlerInterface;
@@ -122,5 +123,18 @@ class ResponseHeaderMiddlewareTest extends TestCase
         }
 
         self::fail('Exception should have been thrown');
+    }
+
+    public function testProcessMethodDoesNotCatchExceptionsFromTheWithHeaderMethod(): void
+    {
+        $next = $this->createStub(RequestHandlerInterface::class);
+        $next
+            ->method('handle')
+            ->willReturn(new Response());
+
+        $middleware = new ResponseHeaderMiddleware('X App', 'Blog');
+
+        $this->expectException(InvalidArgumentException::class);
+        $middleware->process(new Request('GET', '/'), $next);
     }
 }
