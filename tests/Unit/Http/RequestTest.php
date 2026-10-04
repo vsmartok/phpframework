@@ -9,6 +9,7 @@ use PHPFramework\Http\Request;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 
 #[CoversClass(Request::class)]
 final class RequestTest extends TestCase
@@ -139,5 +140,105 @@ final class RequestTest extends TestCase
             'param value =' => ['', 'all'],
             'param value = (array)' => [['one' => '2', 'two' => '3'], 'empty'],
         ];
+    }
+
+    public function testItSetsAnEmptyArrayAsTheDefaultValueForTheAttributesParameter(): void
+    {
+        $request = new Request('GET', '/');
+        self::assertSame([], $request->getAttributes());
+        self::assertNull($request->getAttribute('page'));
+    }
+
+    public function testItStoresThePassedAttributeValuesWithoutConversion(): void
+    {
+        $request = new Request('GET', '/', [], ['locale' => 'en', 'Locale' => 'en_US', 'nAme' => 'Some name!']);
+
+        self::assertSame(
+            ['locale' => 'en', 'Locale' => 'en_US', 'nAme' => 'Some name!'],
+            $request->getAttributes(),
+        );
+
+        self::assertSame('en', $request->getAttribute('locale', 'en_US'));
+        self::assertSame('en_US', $request->getAttribute('Locale', 'EN'));
+    }
+
+    public function testGetAttributeMethodReturnsDefaultValueForMissingAttribute(): void
+    {
+        $request = new Request(
+            'GET',
+            '/',
+            [],
+            ['locale' => 'en', 'is_logged_in' => false],
+        );
+
+        self::assertFalse($request->getAttribute('is_auth', false));
+    }
+
+    public function testGetAttributeMethodReturnsNullIfTheAttributeIsPassedWithSuchValue(): void
+    {
+        $request = new Request('GET', '/', [], ['some_key' => null]);
+
+        self::assertNull($request->getAttribute('some_key', '1'));
+    }
+
+    #[DataProvider('withAttributeMethodTestData')]
+    public function testWithAttributeMethodAddsOrReplacesSingleAttributeAndReturnsNewRequest(array $newAttribute, array $expectedAttributes): void
+    {
+        $request = new Request('POST', '/articles', ['locale' => 'en'], ['locale' => 'en', 'is_logged_in' => false]);
+
+        $newRequest = $request->withAttribute($newAttribute['name'], $newAttribute['value']);
+
+        self::assertSame($expectedAttributes, $newRequest->getAttributes());
+
+        self::assertSame('POST', $request->getMethod());
+        self::assertSame('/articles', $request->getPath());
+        self::assertSame(['locale' => 'en'], $request->getQueryParams());
+        self::assertSame(['locale' => 'en', 'is_logged_in' => false], $request->getAttributes());
+
+        self::assertSame($request->getMethod(), $newRequest->getMethod());
+        self::assertSame($request->getPath(), $newRequest->getPath());
+        self::assertSame($request->getQueryParams(), $newRequest->getQueryParams());
+
+        self::assertNotSame($request, $newRequest);
+    }
+
+    public static function withAttributeMethodTestData(): array
+    {
+        return [
+            'example one' => [
+                ['name' => 'Locale', 'value' => 'en'],
+                ['locale' => 'en', 'is_logged_in' => false, 'Locale' => 'en'],
+            ],
+            'example two' => [
+                ['name' => 'locale', 'value' => 'de'],
+                ['locale' => 'de', 'is_logged_in' => false],
+            ],
+            'example three' => [
+                ['name' => 'is_auth', 'value' => null],
+                ['locale' => 'en', 'is_logged_in' => false, 'is_auth' => null],
+            ],
+            'example four' => [
+                ['name' => '10', 'value' => 'number value'],
+                ['locale' => 'en', 'is_logged_in' => false, '10' => 'number value'],
+            ],
+        ];
+    }
+
+    public function testWithAttributeMethodSavesTheObjectAsAnAttributeValue(): void
+    {
+        $request = new Request('GET', '/');
+
+        $user = new stdClass();
+        $user->name = 'John';
+        $user->age = 23;
+
+        $newRequest = $request->withAttribute('user', $user);
+
+        self::assertSame($user, $newRequest->getAttribute('user'));
+
+        $anotherNewRequest = $newRequest->withAttribute('is_logged_in', true);
+
+        self::assertSame($user, $anotherNewRequest->getAttribute('user'));
+        self::assertTrue($anotherNewRequest->getAttribute('is_logged_in'));
     }
 }
