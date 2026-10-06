@@ -35,6 +35,29 @@ final class Router
 
     public function dispatch(Request $request): Response
     {
+        $match = $this->match($request);
+
+        $handler = $match->getHandler();
+
+        $response = $handler($request);
+
+        if (!$response instanceof Response) {
+            throw new TypeError(
+                sprintf(
+                    'The router handler for [%s] "%s" must return an instance of %s, %s returned.',
+                    $request->getMethod(),
+                    $request->getPath(),
+                    Response::class,
+                    get_debug_type($response),
+                ),
+            );
+        }
+
+        return $response;
+    }
+
+    public function match(Request $request): RouteMatch
+    {
         $method = $request->getMethod();
         $path = $request->getPath();
 
@@ -45,26 +68,12 @@ final class Router
         }
 
         if (!isset($this->routes[$path][$method])) {
-            $allowedMethods = array_keys($this->routes[$path]); 
+            $allowedMethods = array_keys($this->routes[$path]);
             throw new MethodNotAllowedException($allowedMethods);
         }
 
-        $handler = $this->routes[$path][$method];
-
-        $response = $handler($request);
-
-        if (!$response instanceof Response) {
-            throw new TypeError(
-                sprintf(
-                    'The router handler for [%s] "%s" must return an instance of %s, %s returned.',
-                    $method,
-                    $path,
-                    Response::class,
-                    get_debug_type($response),
-                ),
-            );
-        }
-
-        return $response;
+        return new RouteMatch(
+            $this->routes[$path][$method],
+        );
     }
 }
