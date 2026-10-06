@@ -9,6 +9,7 @@ use LogicException;
 use PHPFramework\Http\Request;
 use PHPFramework\Http\Response;
 use PHPFramework\Routing\MethodNotAllowedException;
+use PHPFramework\Routing\RouteMatch;
 use PHPFramework\Routing\RouteNotFoundException;
 use PHPFramework\Routing\Router;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -24,6 +25,7 @@ use TypeError;
 #[UsesClass(Response::class)]
 #[UsesClass(RouteNotFoundException::class)]
 #[UsesClass(MethodNotAllowedException::class)]
+#[UsesClass(RouteMatch::class)]
 final class RouterTest extends TestCase
 {
     #[DataProvider('allowedMethodNamesToNormalize')]
@@ -275,5 +277,69 @@ final class RouterTest extends TestCase
             'path without leading slash' => ['GET', 'home'],
             'non-ascii characters in method name' => ['GÉT', '/'],
         ];
+    }
+
+    public function testMatchMethodReturnsRegisteredHandlerAndEmptyParametersArray(): void
+    {
+        $routeHandlerIsCalled = false;
+
+        $routeHandler = function(Request $request) use (&$routeHandlerIsCalled): Response {
+            $routeHandlerIsCalled = true;
+
+            return new Response();
+        };
+
+        $router = new Router();
+        $router->add('GET', '/', $routeHandler);
+
+        $match = $router->match(new Request('GET', '/'));
+
+        self::assertSame($routeHandler, $match->getHandler());
+        self::assertSame([], $match->getParameters());
+        self::assertFalse($routeHandlerIsCalled);
+    }
+
+    public function testMatchMethodSelectsTheCorrectHandler(): void
+    {
+        $routeHandler = fn(Request $request): Response => new Response('test body', 201, ['Content-Type' => 'text/html; charset=utf-8']);
+
+        $router = new Router();
+        $router->add('GET', '/', fn(Request $request): Response => new Response());
+        $router->add('GET', '/path/to', fn(Request $request): Response => new Response());
+        $router->add('POST', '/path/to', $routeHandler);
+        $router->add('PATCH', '/path/to', fn(Request $request): Response => new Response());
+
+        $match = $router->match(new Request('POST', '/path/to'));
+
+        self::assertSame($routeHandler, $match->getHandler());
+    }
+
+    public function testMatchMethodThrowsRouteNotFoundExceptionIfNoMatchRoute(): void
+    {
+        $router = new Router();
+        $router->add('GET', '/', fn(Request $request): Response => new Response());
+        $router->add('GET', '/path/to', fn(Request $request): Response => new Response());
+
+        $this->expectException(RouteNotFoundException::class);
+
+        $router->match(new Request('GET', '/unknown'));
+    }
+
+    public function testMatchMethodThrowMethodNotAllowedExceptionIfThePathIsRegisteredButTheMethodForTheRequestIsNot(): void
+    {
+        $router = new Router();
+        $router->add('GET', '/', fn(Request $request): Response => new Response());
+        $router->add('DELETE', '/', fn(Request $request): Response => new Response());
+        $router->add('GET', '/path/to', fn(Request $request): Response => new Response());
+        $router->add('POST', '/path/to', fn(Request $request): Response => new Response());
+
+        try {
+            $router->match(new Request('PUT', '/path/to'));
+        } catch (MethodNotAllowedException $e) {
+            self::assertSame(['GET', 'POST'], $e->getAllowedMethods());
+            return;
+        }
+
+        self::fail('An exception should have been thrown');
     }
 }
